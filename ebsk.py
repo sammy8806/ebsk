@@ -1,8 +1,9 @@
 #!/bin/env python3
 import time
 import math
+from threading import Thread
 
-DEBUG=True
+DEBUG=False
 
 class Sensor:
     def __init__(self):
@@ -12,8 +13,8 @@ class Sensor:
 
     def _open(self, name, mode, file = None):
         if not file or file.closed:
-            #if DEBUG:
-            #    print("Opening %s" % name)
+            if DEBUG:
+                print("Opening %s" % name)
             return open(name, mode)
 
     def _close(self, file):
@@ -25,7 +26,8 @@ class Sensor:
         file = self._open(name, 'r')
         value = file.readline()
         self._close(file)
-        print("READ : %s : %s" % (str(file.name),str(value)))
+        if DEBUG:
+            print("READ : %s : %s" % (str(file.name),str(value)))
         return value
 
     def read(self):
@@ -35,7 +37,8 @@ class Sensor:
 class Actor(Sensor):
     def _write(self, name, value):
         file = self._open(name, 'w')
-        print("WRITE : %s : %s" % (str(file.name),str(value)))
+        if DEBUG:
+            print("WRITE : %s : %s" % (str(file.name),str(value)))
         value = file.write(str(value))
         self._close(file)
         return value
@@ -60,7 +63,8 @@ class LightActor(Actor):
         if value <= self.maxValue:
             return Actor.write(self, value)
         else:
-            print("Value %s is out of actor-limits" % str(value))
+            if DEBUG:
+                print("Value %s is out of actor-limits" % str(value))
             return self.write(self.maxValue)
 
     def fade(self, targetValue, valueStep, timeStep=0.01):
@@ -90,20 +94,33 @@ ambient = LightSensor()
 backlight = Backlight()
 kb_backlight = KeyboardBacklight()
 
+def thread_bl():
+    while True:
+        backlight.fade(
+            math.ceil((backlight.maxValue / 255) * (int(ambient.read().split(',')[0][1:]) + 22)),
+            math.ceil(backlight.maxValue/(1024/3))
+        )
+        time.sleep(0.3)
+
+def thread_kbbl():
+    while True:
+        kb_backlight.fade(
+            math.ceil((kb_backlight.maxValue / 255) * (255 - int(ambient.read().split(',')[0][1:]))),
+            math.ceil(kb_backlight.maxValue / 16)
+        )
+        time.sleep(0.3)
+
+t_bl = Thread(target=thread_bl)
+t_kbbl = Thread(target=thread_kbbl)
+
+t_bl.start()
+t_kbbl.start()
+
 while True:
     #print((int(ambient.read().split(',')[0][1:]) + 10))
     #print(backlight.maxValue / 255)
     #print((backlight.maxValue / 255) * (int(ambient.read().split(',')[0][1:]) + 10))
-    backlight.fade(
-        math.ceil((backlight.maxValue / 255) * (int(ambient.read().split(',')[0][1:]) + 13)),
-        math.ceil(backlight.maxValue/512)
-    )
-    kb_backlight.fade(
-        math.ceil((kb_backlight.maxValue / 255) * (255 - int(ambient.read().split(',')[0][1:]))),
-        math.ceil(kb_backlight.maxValue / 32)
-    )
-
-    time.sleep(2)
+    time.sleep(10)
 
 for x in range(0,backlight.maxValue, math.ceil(backlight.maxValue/1024)):
     backlight.write(x)

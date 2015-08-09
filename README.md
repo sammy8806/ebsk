@@ -1,5 +1,5 @@
 # Environmental based Screen and Keyboard
-I've tried to rebuild the auto-mode from osx
+I've tried to rebuild the auto-mode from osx _(mostly for my own usage, but here it is ;-) )_
 
 # Install
 - Simply start ;-)
